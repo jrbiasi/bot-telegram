@@ -3,14 +3,16 @@
 ## 🎯 Project Overview
 
 This is a **Telegram subscription sales bot** using:
+
 - **Framework**: Telegraf (Telegram client) + TypeORM (MySQL ORM)
 - **Language**: TypeScript with strict mode
 - **Architecture**: Layered (Commands → Handlers → Scenes → Services → Entities)
 - **Key Pattern**: State management via Telegraf sessions and scenes (interactive multi-step flows)
 
 ### Big Picture: User Flow
+
 ```
-User /start (registration) 
+User /start (registration)
   → Menu Callbacks (view_plans, my_subscription, help)
   → Scene Entry (checkout or subscription_management)
   → Service Layer (payment, subscription, user)
@@ -23,6 +25,7 @@ User /start (registration)
 ## 🏗️ Architecture Decisions
 
 ### 1. **Layer Structure** (Why this way)
+
 - **Commands** (`src/commands/`): `/start`, `/plans`, `/mysub`, `/help` - entry points
 - **Handlers** (`src/handlers/callbacks.ts`): Inline button callbacks - state transitions
 - **Scenes** (`src/scenes/`): Multi-step workflows - `checkout` and `subscription_management`
@@ -33,17 +36,21 @@ User /start (registration)
 **Critical**: Services are instantiated as singletons (e.g., `export const userService = new UserService()`) and use `AppDataSource.getRepository()` for database access.
 
 ### 2. **Configuration Bootstrapping** (Critical Order)
+
 File: `src/server.ts` imports **in this exact sequence**:
+
 ```typescript
-import './config/env';  // ← MUST BE FIRST - loads .env files
-import { bot } from './config/telegram';  // ← Uses process.env.BOT_TOKEN
-import { AppDataSource } from './config/database';  // ← Uses DB env vars
+import './config/env'; // ← MUST BE FIRST - loads .env files
+import { bot } from './config/telegram'; // ← Uses process.env.BOT_TOKEN
+import { AppDataSource } from './config/database'; // ← Uses DB env vars
 ```
 
 `src/config/env.ts` loads `.env` then `.env.{NODE_ENV}` (development/production override).
 
 ### 3. **Scene Registration Pattern** (Why Sessions + Stages)
+
 Telegraf uses `session()` middleware to store state per user:
+
 - `ctx.session.selectedPlanId` - persists across callback chain
 - `stage.register(scene)` - enables multi-step flows via `ctx.scene.enter('scene-name')`
 - `ctx.scene.leave()` - exits scene and cleans up session data
@@ -51,6 +58,7 @@ Telegraf uses `session()` middleware to store state per user:
 **Example**: Checkout flow stores `selectedPlanId` → enters `checkout` scene → user confirms → payment processed → new Subscription created → scene exits.
 
 ### 4. **Callback vs Scene Decision**
+
 - **Simple callbacks** (1-step): Use `bot.action('callback_name', handler)` in `handlers/callbacks.ts`
 - **Multi-step flows**: Use Scenes in `src/scenes/` for sequential user interactions
 - **Navigation**: `back_to_menu` callback uses `ctx.scene.leave()` to handle both simple actions and scene exits
@@ -60,6 +68,7 @@ Telegraf uses `session()` middleware to store state per user:
 ## 🔌 Key Integration Points
 
 ### Database Initialization
+
 ```typescript
 // src/config/database.ts
 - Connects to MySQL via DataSource (TypeORM)
@@ -68,6 +77,7 @@ Telegraf uses `session()` middleware to store state per user:
 ```
 
 ### Telegram Bot Setup
+
 ```typescript
 // src/config/telegram.ts
 - Initializes bot with BOT_TOKEN
@@ -76,6 +86,7 @@ Telegraf uses `session()` middleware to store state per user:
 ```
 
 ### Command Registration
+
 ```typescript
 // src/commands/index.ts + src/server.ts
 - registerCommands(bot) - maps /command → handler
@@ -88,36 +99,43 @@ Telegraf uses `session()` middleware to store state per user:
 ## 📱 Common Workflows
 
 ### Adding a New Command
+
 1. Create `src/commands/newcommand.ts`:
-   ```typescript
-   export async function newcommandCommand(ctx: Context) {
-     // Use ctx.reply() for responses
-     // Use keyboard objects for inline buttons
-   }
-   ```
+    ```typescript
+    export async function newcommandCommand(ctx: Context) {
+    	// Use ctx.reply() for responses
+    	// Use keyboard objects for inline buttons
+    }
+    ```
 2. Register in `src/commands/index.ts`:
-   ```typescript
-   bot.command('newcommand', newcommandCommand);
-   ```
+    ```typescript
+    bot.command('newcommand', newcommandCommand);
+    ```
 3. Test via `/newcommand` in Telegram
 
 ### Adding a New Scene (Multi-step Flow)
+
 1. Create `src/scenes/newscene.ts`:
-   ```typescript
-   export const newscene = new Scenes.BaseScene('newscene');
-   newscene.enter(async (ctx: any) => { /* entry logic */ });
-   newscene.action('button_callback', async (ctx: any) => { /* handle button */ });
-   ```
+    ```typescript
+    export const newscene = new Scenes.BaseScene('newscene');
+    newscene.enter(async (ctx: any) => {
+    	/* entry logic */
+    });
+    newscene.action('button_callback', async (ctx: any) => {
+    	/* handle button */
+    });
+    ```
 2. Register in `src/server.ts`:
-   ```typescript
-   stage.register(newscene);
-   ```
+    ```typescript
+    stage.register(newscene);
+    ```
 3. Enter from callback:
-   ```typescript
-   await ctx.scene.enter('newscene');
-   ```
+    ```typescript
+    await ctx.scene.enter('newscene');
+    ```
 
 ### Adding a Database Entity
+
 1. Create `src/entities/NewEntity.ts` with TypeORM decorators
 2. Add to `src/config/database.ts` entities array
 3. Create corresponding `src/dtos/newentity.dto.ts` for input/output contracts
@@ -138,7 +156,9 @@ npm run dev              # Start with ts-node-dev (hot reload + debugging)
 ## ⚙️ TypeScript/Build Configuration
 
 ### Path Aliases (Critical for Imports)
+
 `tsconfig.json` defines:
+
 ```json
 "@dtos/*": "src/dtos/*",
 "@entities/*": "src/entities/*",
@@ -153,7 +173,9 @@ npm run dev              # Start with ts-node-dev (hot reload + debugging)
 **Usage**: `import { userService } from '@services/user'` (not relative paths).
 
 ### Babel Config (Legacy Decorators Required)
+
 `babel.config.js` plugin order matters:
+
 1. `module-resolver` first (resolves imports)
 2. `@babel/plugin-proposal-decorators` with `legacy: true`
 3. `@babel/plugin-proposal-class-properties`
@@ -161,6 +183,7 @@ npm run dev              # Start with ts-node-dev (hot reload + debugging)
 This enables TypeORM `@Entity`, `@Column` decorators on class instances.
 
 ### ESLint Conventions
+
 - **Interface naming**: Must match `/^I[A-Z]/` (e.g., `IUserDTO` not `UserDTO`)
 - **Indentation**: Tabs (4 spaces), not spaces
 - **Imports**: Sorted by `import-helpers` plugin (modules → @paths → relative)
@@ -171,6 +194,7 @@ This enables TypeORM `@Entity`, `@Column` decorators on class instances.
 ## 💾 Database Schema (TypeORM Entities)
 
 ### Core Relationships
+
 ```
 User (telegramId PK) ──┬─ Subscriptions (1:N)
                        └─ Payments (1:N)
@@ -186,11 +210,13 @@ Payment (id PK uuid) ──┬─ User (N:1)
 ```
 
 ### Service Layer Pattern
+
 Each service (e.g., `UserService`) wraps repository access:
+
 ```typescript
 export class UserService {
   private userRepository = AppDataSource.getRepository(User);
-  
+
   async createUser(data: CreateUserDTO): Promise<User> {
     // Business logic here
     return this.userRepository.save(...);
@@ -207,16 +233,18 @@ Use via: `userService.createUser(data)` - never direct repository access.
 ## 🎮 Inline Keyboard Patterns
 
 All keyboards defined in `src/utils/keyboards.ts`:
+
 ```typescript
 export const mainMenuKeyboard = (): InlineKeyboardMarkup => ({
-  inline_keyboard: [
-    [{ text: '📋 Ver Planos', callback_data: 'view_plans' }],
-    // ...
-  ],
+	inline_keyboard: [
+		[{ text: '📋 Ver Planos', callback_data: 'view_plans' }],
+		// ...
+	],
 });
 ```
 
 **Spread pattern** in responses:
+
 ```typescript
 await ctx.reply(message, { parse_mode: 'Markdown', ...mainMenuKeyboard() });
 ```
@@ -258,4 +286,3 @@ await ctx.reply(message, { parse_mode: 'Markdown', ...mainMenuKeyboard() });
 - Create `.env.production` with prod database credentials
 - Disable `synchronize` in production (use migrations instead)
 - Use process managers (PM2, systemd) for bot restarts
-
