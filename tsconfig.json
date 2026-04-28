@@ -1,0 +1,86 @@
+{
+	"ts-node-dev": {
+		"compilerOptions": {
+			"module": "commonjs",
+			"experimentalDecorators": true,
+			"emitDecoratorMetadata": true,
+			"target": "ES6",
+			"moduleResolution": "node"
+		}
+	},
+	"compilerOptions": {
+		"target": "es2016",
+		"module": "commonjs",
+		"rootDir": "./src",
+		"moduleResolution": "node",
+		"baseUrl": ".",
+		"paths": {
+			"@dtos/*": [
+				"src/dtos/*"
+			],
+			"@entities/*": [
+				"src/entities/*"
+			],
+			"@services/*": [
+				"src/services/*"
+			],
+			"@config/*": [
+				"src/config/*"
+			],
+			"@middleware/*": [
+				"src/middleware/*"
+			],
+			"@utils/*": [
+				"src/utils/*"
+			],
+			"@commands/*": [
+				"src/commands/*"
+			],
+			"@scenes/*": [
+				"src/scenes/*"
+			],
+			"@handlers/*": [
+				"src/handlers/*"
+			]
+		},
+		"allowJs": true,
+		"outDir": "./dist/",
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"forceConsistentCasingInFileNames": true,
+		"noFallthroughCasesInSwitch": true,
+		"strict": true,
+		"skipLibCheck": true,
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		"resolveJsonModule": true,
+		"strictPropertyInitialization": false,
+		"downlevelIteration": true,
+		"strictNullChecks": false,
+		"isolatedModules": true,
+		"useDefineForClassFields": false,
+		"sourceMap": true,
+		"typeRoots": [
+			"./node_modules/@types",
+			"./src/@types"
+		],
+		"types": [
+			"node",
+			"jest"
+		]
+	},
+	"include": [
+		"src/**/*",
+		"src/@types/**/*"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	],
+	"ts-node": {
+		"transpileOnly": true,
+		"require": [
+			"tsconfig-paths/register"
+		]
+	}
+}

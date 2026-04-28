@@ -1,0 +1,99 @@
+{
+	"env": {
+		"es2021": true,
+		"node": true,
+		"jest": true
+	},
+	"extends": ["airbnb-base", "plugin:@typescript-eslint/recommended", "prettier", "plugin:prettier/recommended"],
+	"parser": "@typescript-eslint/parser",
+	"parserOptions": {
+		"ecmaVersion": 12,
+		"sourceType": "module"
+	},
+	"plugins": ["@typescript-eslint", "eslint-plugin-import-helpers", "prettier"],
+	"rules": {
+		"no-underscore-dangle": "off",
+		"no-plusplus": "off",
+		"camelcase": "off",
+		"import/no-unresolved": "error",
+		"@typescript-eslint/naming-convention": [
+			"error",
+			{
+				"selector": "interface",
+				"format": ["PascalCase"],
+				"custom": {
+					"regex": "^I[A-Z]",
+					"match": true
+				}
+			}
+		],
+		"max-classes-per-file": ["error", 2],
+		"@typescript-eslint/no-explicit-any": "off",
+		"@typescript-eslint/no-unused-vars": "warn",
+		"default-case": "off",
+		"no-param-reassign": "off",
+		"no-unused-vars": "warn",
+		"no-unreachable": "warn",
+		"no-continue": "off",
+		"no-bitwise": "off",
+		"no-control-regex": "off",
+		"class-methods-use-this": "off",
+		"import/prefer-default-export": "off",
+		"no-shadow": "off",
+		"no-console": "off",
+		"no-useless-constructor": "off",
+		"no-useless-escape": "off",
+		"no-empty-function": "off",
+		"lines-between-class-members": "off",
+		"import/extensions": [
+			"error",
+			"ignorePackages",
+			{
+				"ts": "never"
+			}
+		],
+		"import-helpers/order-imports": [
+			"warn",
+			{
+				"newlinesBetween": "always",
+				"groups": ["module", "/^@/", ["parent", "sibling", "index"]],
+				"alphabetize": {
+					"order": "asc",
+					"ignoreCase": true
+				}
+			}
+		],
+		"import/no-extraneous-dependencies": [
+			"error",
+			{
+				"devDependencies": ["**/*.spec.js"]
+			}
+		],
+		"prettier/prettier": [
+			"warn",
+			{
+				"ignoreCase": false,
+				"ignoreDeclarationSort": true,
+				"ignoreMemberSort": false,
+				"memberSyntaxSortOrder": ["none", "all", "multiple", "single"],
+				"allowSeparatedGroups": true,
+				"endOfLine": "lf",
+				"singleQuote": true,
+				"semi": true,
+				"trailingComma": "es5",
+				"printWidth": 150,
+				"tabWidth": 4,
+				"useTabs": true
+			}
+		],
+		"eqeqeq": "off",
+		"default-param-last": "off"
+	},
+	"settings": {
+		"import/resolver": {
+			"typescript": {
+				"project": "./tsconfig.json"
+			}
+		}
+	}
+}

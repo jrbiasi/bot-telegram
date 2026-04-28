@@ -1,0 +1,19 @@
+{
+	"endOfLine": "lf",
+	"singleQuote": true,
+	"semi": true,
+	"trailingComma": "es5",
+	"printWidth": 150,
+	"tabWidth": 4,
+	"useTabs": true,
+	"bracketSpacing": true,
+	"arrowParens": "always",
+	"overrides": [
+		{
+			"files": "src/routes/*.ts",
+			"options": {
+				"printWidth": 200
+			}
+		}
+	]
+}
