@@ -78,7 +78,9 @@ export function registerCallbacks(bot: Telegraf) {
 
 	bot.action('back_to_menu', async (ctx: any) => {
 		try {
-			await ctx.scene.leave();
+			if (ctx.scene && ctx.scene.current) {
+				await ctx.scene.leave();
+			}
 		} catch {
 			// Not in a scene, ignore
 		}

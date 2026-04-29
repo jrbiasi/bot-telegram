@@ -61,15 +61,51 @@ Deseja continuar com a compra?
 						{ text: '✅ Confirmar Pagamento', callback_data: `confirm_payment_${planId}` },
 						{ text: '❌ Cancelar', callback_data: 'cancel_payment' },
 					],
-					[{ text: '⬅️ Voltar', callback_data: 'view_plans' }],
+					[{ text: '⬅️ Voltar', callback_data: 'back_to_menu' }],
 				],
 			},
 		};
 
-		await ctx.editMessageText(message, {
-			parse_mode: 'Markdown',
-			...keyboard,
-		});
+		// Check if current message is a photo
+		try {
+			const currentMessage = ctx.callbackQuery?.message;
+			const isPhotoMessage = currentMessage && 'photo' in currentMessage;
+
+			if (isPhotoMessage) {
+				// If it's a photo, delete it and send a new text message
+				try {
+					await ctx.deleteMessage();
+					console.log('Photo message deleted');
+				} catch (deleteError) {
+					console.log('Could not delete message:', deleteError);
+				}
+
+				await ctx.reply(message, {
+					parse_mode: 'Markdown',
+					...keyboard,
+				});
+			} else {
+				// If it's text, try to edit it
+				try {
+					await ctx.editMessageText(message, {
+						parse_mode: 'Markdown',
+						...keyboard,
+					});
+				} catch (editError) {
+					console.log('Could not edit message, sending new one:', editError);
+					await ctx.reply(message, {
+						parse_mode: 'Markdown',
+						...keyboard,
+					});
+				}
+			}
+		} catch (error) {
+			console.log('Error handling message, sending new reply:', error);
+			await ctx.reply(message, {
+				parse_mode: 'Markdown',
+				...keyboard,
+			});
+		}
 	} catch (error) {
 		console.error('Error in checkout scene:', error);
 		await ctx.reply('Erro ao carregar plano. Tente novamente.');
@@ -130,28 +166,49 @@ checkoutScene.action(/^confirm_payment_/, async (ctx: any) => {
 Sua assinatura está ativa! Aproveite! 🎉
 		`;
 
-		await ctx.editMessageText(successMessage, {
-			parse_mode: 'Markdown',
-		});
+		try {
+			await ctx.editMessageText(successMessage, {
+				parse_mode: 'Markdown',
+			});
+		} catch (editError) {
+			console.log('Could not edit message, sending new one:', editError);
+			await ctx.reply(successMessage, {
+				parse_mode: 'Markdown',
+			});
+		}
 
 		await ctx.scene.leave();
 		await showMainMenu(ctx, 'reply');
 	} catch (error) {
 		console.error('Error confirming payment:', error);
-		await ctx.editMessageText('❌ *Erro ao processar pagamento. Tente novamente.*', {
-			parse_mode: 'Markdown',
-			reply_markup: {
-				inline_keyboard: [[{ text: '🏠 Voltar ao Menu', callback_data: 'view_plans' }]],
-			},
-		});
-		// await ctx.scene.leave();
+		try {
+			await ctx.editMessageText('❌ *Erro ao processar pagamento. Tente novamente.*', {
+				parse_mode: 'Markdown',
+				reply_markup: {
+					inline_keyboard: [[{ text: '🏠 Voltar ao Menu', callback_data: 'view_plans' }]],
+				},
+			});
+		} catch (editError) {
+			await ctx.reply('❌ *Erro ao processar pagamento. Tente novamente.*', {
+				parse_mode: 'Markdown',
+				reply_markup: {
+					inline_keyboard: [[{ text: '🏠 Voltar ao Menu', callback_data: 'view_plans' }]],
+				},
+			});
+		}
 	}
 });
 
 checkoutScene.action('cancel_payment', async (ctx: any) => {
-	await ctx.editMessageText('❌ *Compra cancelada. Voltando ao menu de planos...*', {
-		parse_mode: 'Markdown',
-	});
+	try {
+		await ctx.editMessageText('❌ *Compra cancelada. Voltando ao menu de planos...*', {
+			parse_mode: 'Markdown',
+		});
+	} catch (editError) {
+		await ctx.reply('❌ *Compra cancelada. Voltando ao menu de planos...*', {
+			parse_mode: 'Markdown',
+		});
+	}
 	await ctx.scene.leave();
 	await showPlans(ctx, 'reply');
 });
