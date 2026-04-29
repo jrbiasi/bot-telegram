@@ -1,7 +1,7 @@
 import { Scenes } from 'telegraf';
 
 import { subscriptionService } from '../services/subscription';
-import { backMenuKeyboard, subscriptionActionsKeyboard } from '../utils/keyboards';
+import { showMainMenu } from '../handlers/actions';
 
 export const subscriptionScene = new Scenes.BaseScene('subscription_management');
 
@@ -13,7 +13,9 @@ subscriptionScene.enter(async (ctx: any) => {
 
 		if (!subscription) {
 			await ctx.reply('Você não possui uma assinatura ativa no momento.', {
-				...backMenuKeyboard(),
+				reply_markup: {
+					inline_keyboard: [[{ text: '🏠 Voltar ao Menu', callback_data: 'back_to_menu' }]],
+				},
 			});
 			await ctx.scene.leave();
 			return;
@@ -48,7 +50,13 @@ Aproveite seu acesso! 🎉
 
 		await ctx.reply(message, {
 			parse_mode: 'Markdown',
-			...subscriptionActionsKeyboard(),
+			reply_markup: {
+				inline_keyboard: [
+					[{ text: '🔄 Renovar', callback_data: 'renew_subscription' }],
+					[{ text: '❌ Cancelar', callback_data: 'cancel_subscription' }],
+					[{ text: '🏠 Voltar ao Menu', callback_data: 'back_to_menu' }],
+				],
+			},
 		});
 	} catch (error) {
 		console.error('Error in subscription scene:', error);
@@ -83,10 +91,13 @@ Sua assinatura foi renovada por mais um período! 🎉
 
 		await ctx.reply(message, {
 			parse_mode: 'Markdown',
-			...backMenuKeyboard(),
+			reply_markup: {
+				inline_keyboard: [[{ text: '🏠 Voltar ao Menu', callback_data: 'back_to_menu' }]],
+			},
 		});
 
 		await ctx.scene.leave();
+		await showMainMenu(ctx, 'reply');
 	} catch (error) {
 		console.error('Error renewing subscription:', error);
 		await ctx.reply('Erro ao renovar assinatura. Tente novamente.');
@@ -119,10 +130,13 @@ Sentiremos sua falta! Se quiser retornar, é só usar /plans
 
 		await ctx.reply(message, {
 			parse_mode: 'Markdown',
-			...backMenuKeyboard(),
+			reply_markup: {
+				inline_keyboard: [[{ text: '🏠 Voltar ao Menu', callback_data: 'back_to_menu' }]],
+			},
 		});
 
 		await ctx.scene.leave();
+		await showMainMenu(ctx, 'reply');
 	} catch (error) {
 		console.error('Error cancelling subscription:', error);
 		await ctx.reply('Erro ao cancelar assinatura. Tente novamente.');

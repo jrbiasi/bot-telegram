@@ -2,16 +2,20 @@ import { Scenes } from 'telegraf';
 
 import { AppDataSource } from '../config/database';
 import { Plan } from '../entities/Plan';
+import { showMainMenu, showPlans } from '../handlers/actions';
 import { paymentService } from '../services/payment';
 import { subscriptionService } from '../services/subscription';
-import { backMenuKeyboard, confirmPaymentKeyboard } from '../utils/keyboards';
 
 export const checkoutScene = new Scenes.BaseScene('checkout');
 
 checkoutScene.enter(async (ctx: any) => {
 	const planId = ctx.session.selectedPlanId;
 
+	console.log('Checkout scene entered with planId:', planId);
+	console.log('Full session:', ctx.session);
+
 	if (!planId) {
+		console.error('No planId found in session');
 		await ctx.reply('Plano não selecionado. Volte ao menu de planos.');
 		await ctx.scene.leave();
 		return;
@@ -50,9 +54,21 @@ ${plan.description ? `*Descrição:* ${plan.description}\n` : ''}
 Deseja continuar com a compra?
 		`;
 
-		await ctx.reply(message, {
+		const keyboard = {
+			reply_markup: {
+				inline_keyboard: [
+					[
+						{ text: '✅ Confirmar Pagamento', callback_data: `confirm_payment_${planId}` },
+						{ text: '❌ Cancelar', callback_data: 'cancel_payment' },
+					],
+					[{ text: '⬅️ Voltar', callback_data: 'view_plans' }],
+				],
+			},
+		};
+
+		await ctx.editMessageText(message, {
 			parse_mode: 'Markdown',
-			...confirmPaymentKeyboard(planId),
+			...keyboard,
 		});
 	} catch (error) {
 		console.error('Error in checkout scene:', error);
@@ -77,23 +93,27 @@ checkoutScene.action(/^confirm_payment_/, async (ctx: any) => {
 			return;
 		}
 
-		// Create payment record (mocked)
+		// 1. Create subscription FIRST
+		const subscription = await subscriptionService.renewSubscription(planId, userId);
+
+		if (!subscription) {
+			throw new Error('Falha ao criar assinatura');
+		}
+
+		// 2. THEN create payment with the subscription ID
 		const payment = await paymentService.createPayment({
 			userId,
-			subscriptionId: '', // Will be set after subscription creation
+			subscriptionId: subscription.id, // Now we have the subscription ID
 			amount: Number(plan.price),
 			currency: plan.currency,
 			paymentMethod: 'telegram_mock',
 			description: `Purchase of ${plan.name} plan`,
 		});
 
-		// Simulate payment completion (mock)
+		// 3. Simulate payment completion (mock)
 		await paymentService.mockPayment(payment.id);
 
-		// Create subscription
-		const subscription = await subscriptionService.renewSubscription(planId, userId);
-
-		// Update payment with subscription ID
+		// 4. Update payment with external reference
 		await paymentService.updatePayment(payment.id, {
 			status: 'completed',
 			externalPaymentId: `MOCK_${subscription.id}`,
@@ -110,22 +130,30 @@ checkoutScene.action(/^confirm_payment_/, async (ctx: any) => {
 Sua assinatura está ativa! Aproveite! 🎉
 		`;
 
-		await ctx.reply(successMessage, {
+		await ctx.editMessageText(successMessage, {
 			parse_mode: 'Markdown',
-			...backMenuKeyboard(),
 		});
 
 		await ctx.scene.leave();
+		await showMainMenu(ctx, 'reply');
 	} catch (error) {
 		console.error('Error confirming payment:', error);
-		await ctx.reply('Erro ao processar pagamento. Tente novamente.');
-		await ctx.scene.leave();
+		await ctx.editMessageText('❌ *Erro ao processar pagamento. Tente novamente.*', {
+			parse_mode: 'Markdown',
+			reply_markup: {
+				inline_keyboard: [[{ text: '🏠 Voltar ao Menu', callback_data: 'view_plans' }]],
+			},
+		});
+		// await ctx.scene.leave();
 	}
 });
 
 checkoutScene.action('cancel_payment', async (ctx: any) => {
-	await ctx.reply('Compra cancelada. Voltando ao menu de planos...');
+	await ctx.editMessageText('❌ *Compra cancelada. Voltando ao menu de planos...*', {
+		parse_mode: 'Markdown',
+	});
 	await ctx.scene.leave();
+	await showPlans(ctx, 'reply');
 });
 
 checkoutScene.leave(async (ctx: any) => {

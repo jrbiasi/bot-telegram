@@ -1,61 +1,36 @@
 import { Telegraf } from 'telegraf';
 
-import { AppDataSource } from '../config/database';
-import { Plan } from '../entities/Plan';
-import { mainMenuKeyboard } from '../utils/keyboards';
+import { showMainMenu, showPlans, showHelp, showSubscription } from './actions';
 
 export function registerCallbacks(bot: Telegraf) {
-	// View Plans callback
 	bot.action('view_plans', async (ctx: any) => {
-		const planRepository = AppDataSource.getRepository(Plan);
-
 		try {
-			const plans = await planRepository.find({
-				where: { isActive: true },
-				order: { price: 'ASC' },
-			});
-
-			if (plans.length === 0) {
-				await ctx.editMessageText('Nenhum plano disponível no momento.');
-				return;
+			// Se estiver em uma cena, saia dela primeiro
+			if (ctx.scene && ctx.scene.current) {
+				await ctx.scene.leave();
 			}
-
-			let message = '📋 *Planos Disponíveis*\n\n';
-
-			plans.forEach((plan: Plan, index: number) => {
-				message += `*${index + 1}. ${plan.name}*\n`;
-				message += `💰 ${plan.price} ${plan.currency} - ${plan.billingCycle === 'lifetime' ? 'Vitalício' : `${plan.billingCycle === 'monthly' ? 'Mensal' : 'Anual'}`}\n`;
-				if (plan.description) {
-					message += `${plan.description}\n`;
-				}
-				message += '\n';
-			});
-
-			const keyboard = {
-				reply_markup: {
-					inline_keyboard: [
-						...plans.map((plan: Plan) => [
-							{
-								text: `Comprar ${plan.name}`,
-								callback_data: `buy_plan_${plan.id}`,
-							},
-						]),
-						[{ text: '🏠 Voltar ao Menu', callback_data: 'back_to_menu' }],
-					],
-				},
-			};
-
-			await ctx.editMessageText(message, { parse_mode: 'Markdown', ...keyboard });
+			await showPlans(ctx, 'edit');
 		} catch (error) {
-			console.error('Error viewing plans:', error);
+			console.error('Error in view_plans:', error);
 			await ctx.reply('Erro ao carregar planos. Tente novamente.');
 		}
 	});
 
-	// Buy Plan callback
-	bot.action(/^buy_plan_/, async (ctx: any) => {
-		const planId = ctx.match[0].replace('buy_plan_', '');
+	bot.action(/^buy_plan_(.+)$/, async (ctx: any) => {
+		const planId = ctx.match[1];
+
+		console.log('Buy plan clicked with planId:', planId);
+
+		if (!planId) {
+			await ctx.reply('Plano inválido. Tente novamente.');
+			return;
+		}
+
+		// Garantir que não há sessão anterior contaminada
 		ctx.session.selectedPlanId = planId;
+		ctx.session.selectedPlan = null;
+
+		console.log('Session set to:', ctx.session);
 
 		try {
 			await ctx.scene.enter('checkout');
@@ -65,50 +40,24 @@ export function registerCallbacks(bot: Telegraf) {
 		}
 	});
 
-	// My Subscription callback
 	bot.action('my_subscription', async (ctx: any) => {
 		try {
-			await ctx.scene.enter('subscription_management');
+			await showSubscription(ctx, 'edit');
 		} catch (error) {
-			console.error('Error entering subscription scene:', error);
+			console.error('Error in my_subscription:', error);
 			await ctx.reply('Erro ao carregar assinatura. Tente novamente.');
 		}
 	});
 
-	// Help callback
 	bot.action('help', async (ctx: any) => {
-		const helpText = `
-❓ *AJUDA*
-
-Aqui estão os comandos disponíveis:
-
-/start - Retorna ao menu inicial
-/plans - Visualiza todos os planos disponíveis
-/mysub - Visualiza sua assinatura ativa
-/help - Mostra esta mensagem
-
-*Como Funciona:*
-1. Use /plans para ver os planos disponíveis
-2. Escolha o plano desejado
-3. Complete o pagamento (mockado por enquanto)
-4. Acesse seu plano com /mysub
-
-*Suporte:*
-Em caso de dúvidas, entre em contato conosco através do suporte.
-
-Qualquer dúvida? 🤔
-		`;
-
-		const keyboard = {
-			reply_markup: {
-				inline_keyboard: [[{ text: '🏠 Voltar ao Menu', callback_data: 'back_to_menu' }]],
-			},
-		};
-
-		await ctx.editMessageText(helpText, { parse_mode: 'Markdown', ...keyboard });
+		try {
+			await showHelp(ctx, 'edit');
+		} catch (error) {
+			console.error('Error in help:', error);
+			await ctx.reply('Erro ao carregar ajuda. Tente novamente.');
+		}
 	});
 
-	// Scene leave callbacks
 	bot.action('renew_subscription', async (ctx: any) => {
 		try {
 			await ctx.scene.enter('subscription_management');
@@ -127,23 +76,19 @@ Qualquer dúvida? 🤔
 		}
 	});
 
-	// Back to menu callback
 	bot.action('back_to_menu', async (ctx: any) => {
-		const from = ctx.from!;
-
-		const message = `Olá ${from.first_name}! 👋\n\nBem-vindo ao nosso serviço de assinaturas. Escolha uma opção:`;
-
-		// Try to leave scene if in one
 		try {
 			await ctx.scene.leave();
-		} catch (error) {
+		} catch {
 			// Not in a scene, ignore
 		}
 
-		await ctx.editMessageText(message, {
-			parse_mode: 'Markdown',
-			...mainMenuKeyboard(),
-		});
+		try {
+			await showMainMenu(ctx, 'edit');
+		} catch (error) {
+			console.error('Error in back_to_menu:', error);
+			await ctx.reply('Erro ao voltar ao menu. Tente novamente.');
+		}
 	});
 
 	console.log('✅ Callbacks registered');
